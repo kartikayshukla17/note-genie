@@ -1,14 +1,14 @@
 # Dependencies
 node_modules/
 
-# Build output
-dist/
-build/
-
 # Environment variables
 .env
 .env.local
 .env.*.local
+
+# Data files with sensitive info
+data/users.json
+data/pending.json
 
 # Logs
 logs
