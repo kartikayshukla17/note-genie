@@ -1,6 +1,6 @@
 import React, { useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { updateNoteLocal, updateNoteAsync } from '../reducers/noteSlice'
+import { updateNoteLocal, syncNoteToServer } from '../reducers/noteSlice'
 
 const Editor = ({ activeFileId }) => {
     const dispatch = useDispatch()
@@ -19,14 +19,20 @@ const Editor = ({ activeFileId }) => {
             content: name === 'content' ? value : note.content
         };
 
-        // Update local state immediately for fast UI
         dispatch(updateNoteLocal(updatedData));
 
-        // Debounce backend update to reduce API calls
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
-            dispatch(updateNoteAsync(updatedData));
-        }, 500);
+            const isNew = note.id.startsWith('local_');
+            dispatch(syncNoteToServer({
+                id: note.id,
+                title: updatedData.title,
+                content: updatedData.content,
+                isNew
+            })).catch(() => {
+                // Sync failed (offline) - data is still saved locally via redux-persist
+            });
+        }, 1000);
     }
 
     return (
@@ -49,14 +55,11 @@ const Editor = ({ activeFileId }) => {
                 placeholder="Start typing..."
                 spellCheck="false"
             />
-            <div className="px-6 py-2 border-t border-white/5 text-xs text-zinc-600 flex justify-between bg-zinc-900/50 select-none backdrop-blur-sm">
-                <span>Created: {new Date(note.createdAt).toLocaleString()}</span>
-                <div className="flex gap-2 text-zinc-700">|</div>
-                <span>Last Updated: {new Date(note.lastUpdate).toLocaleString()}</span>
+            <div className="absolute bottom-4 right-4 text-xs text-zinc-600">
+                {new Date(note.lastUpdate).toLocaleString()}
             </div>
         </div>
     )
 }
 
 export default Editor
-

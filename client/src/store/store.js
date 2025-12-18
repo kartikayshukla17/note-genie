@@ -13,26 +13,33 @@ import {
 } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
 
-
 const migrate = (state) => {
   return Promise.resolve(
-
     state && Array.isArray(state.notes)
       ? {
         ...state,
         notes: {
           items: [],
+          pendingSync: [],
           loading: false,
           error: null
         }
       }
-      : state
+      : state && state.notes && !state.notes.pendingSync
+        ? {
+          ...state,
+          notes: {
+            ...state.notes,
+            pendingSync: []
+          }
+        }
+        : state
   );
 };
 
 const persistConfig = {
   key: 'root',
-  version: 2,
+  version: 3,
   storage,
   migrate,
 }

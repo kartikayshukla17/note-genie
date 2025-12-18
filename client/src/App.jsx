@@ -20,7 +20,9 @@ const App = () => {
 
   useEffect(() => {
     if (currentUser) {
-      dispatch(fetchNotes());
+      dispatch(fetchNotes()).catch(() => {
+        // Offline - use cached notes from redux-persist
+      });
     } else {
       dispatch(clearNotes());
     }

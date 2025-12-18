@@ -1,87 +1,39 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import User from '../models/User.js';
+import Pending from '../models/Pending.js';
 import { sendOtpEmail } from '../utils/sendEmail.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const USERS_FILE = path.join(__dirname, '../data/users.json');
-const PENDING_FILE = path.join(__dirname, '../data/pending.json');
-
-const getUsers = () => {
-    try {
-        if (!fs.existsSync(USERS_FILE)) return [];
-        const data = fs.readFileSync(USERS_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (err) {
-        return [];
-    }
-};
-
-const saveUsers = (users) => {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-};
-
-const getPending = () => {
-    try {
-        if (!fs.existsSync(PENDING_FILE)) return [];
-        const data = fs.readFileSync(PENDING_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (err) {
-        return [];
-    }
-};
-
-const savePending = (pending) => {
-    fs.writeFileSync(PENDING_FILE, JSON.stringify(pending, null, 2));
-};
 
 const generateOtp = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 export const register = async (req, res) => {
-    console.log('=== REGISTER START ===');
-    console.log('Request body:', req.body);
     try {
         const { email, password, name } = req.body;
-        const users = getUsers();
-        console.log('Current users count:', users.length);
 
-        if (users.find(u => u.email === email)) {
-            console.log('User already exists:', email);
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
             return res.status(400).json({ message: "User already exists" });
         }
 
         const otp = generateOtp();
-        console.log('Generated OTP:', otp);
-
         const hashedPassword = await bcrypt.hash(password, 12);
-        console.log('Password hashed');
 
         const otpToken = jwt.sign(
             { email, name, password: hashedPassword, otp },
             process.env.JWT_SECRET,
             { expiresIn: '5m' }
         );
-        console.log('JWT token created');
 
-        let pending = getPending();
-        pending = pending.filter(p => p.email !== email);
-        pending.push({ email, otpToken, createdAt: Date.now() });
-        savePending(pending);
-        console.log('Pending saved');
+        await Pending.findOneAndDelete({ email });
+        await Pending.create({ email, otpToken, type: 'register' });
 
-        console.log('About to send email to:', email);
         try {
             await sendOtpEmail(email, otp);
-            console.log('Email sent successfully!');
             return res.status(200).json({ message: "OTP sent to email", email });
         } catch (emailError) {
-            console.error('Email send FAILED:', emailError.message);
-            console.error('Full error:', emailError);
+            console.error('Email send error:', emailError);
             return res.status(500).json({ message: "Failed to send OTP email. Please try again." });
         }
 
@@ -94,9 +46,8 @@ export const register = async (req, res) => {
 export const verifyOtp = async (req, res) => {
     try {
         const { email, otp } = req.body;
-        const pending = getPending();
 
-        const pendingUser = pending.find(p => p.email === email);
+        const pendingUser = await Pending.findOne({ email, type: 'register' });
         if (!pendingUser) {
             return res.status(400).json({ message: "No pending registration found" });
         }
@@ -112,62 +63,65 @@ export const verifyOtp = async (req, res) => {
             return res.status(400).json({ message: "Invalid OTP" });
         }
 
-        const users = getUsers();
-        const newUser = {
-            _id: Date.now().toString(),
+        const newUser = new User({
             email: decoded.email,
             name: decoded.name,
             password: decoded.password,
             notes: []
-        };
+        });
 
-        users.push(newUser);
-        saveUsers(users);
-
-        const newPending = pending.filter(p => p.email !== email);
-        savePending(newPending);
+        await newUser.save();
+        await Pending.findOneAndDelete({ email });
 
         const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         res.cookie("access_token", token, {
             httpOnly: true,
-        }).status(201).json({ message: "Email verified!", user: { id: newUser._id, email: newUser.email, name: newUser.name, notes: newUser.notes } });
+        }).status(201).json({
+            message: "Email verified!",
+            user: { id: newUser._id, email: newUser.email, name: newUser.name, notes: newUser.notes }
+        });
 
     } catch (error) {
+        console.error('Verify OTP error:', error);
         res.status(500).json({ message: "Verification failed" });
-        console.log(error);
     }
 };
 
 export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const users = getUsers();
 
-        const existingUser = users.find(u => u.email === email);
-        if (!existingUser) return res.status(404).json({ message: "User doesn't exist" });
+        const existingUser = await User.findOne({ email });
+        if (!existingUser) {
+            return res.status(404).json({ message: "User doesn't exist" });
+        }
 
         const isPasswordCorrect = await bcrypt.compare(password, existingUser.password);
-        if (!isPasswordCorrect) return res.status(400).json({ message: "Invalid credentials" });
+        if (!isPasswordCorrect) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
 
         const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         res.cookie("access_token", token, {
             httpOnly: true,
-        }).status(200).json({ message: "Login successful", user: { id: existingUser._id, email: existingUser.email, name: existingUser.name, notes: existingUser.notes } });
+        }).status(200).json({
+            message: "Login successful",
+            user: { id: existingUser._id, email: existingUser.email, name: existingUser.name, notes: existingUser.notes }
+        });
 
     } catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({ message: "Something went wrong" });
-        console.log(error);
     }
 };
 
 export const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
-        const users = getUsers();
 
-        const existingUser = users.find(u => u.email === email);
+        const existingUser = await User.findOne({ email });
         if (!existingUser) {
             return res.status(404).json({ message: "User doesn't exist" });
         }
@@ -179,10 +133,8 @@ export const forgotPassword = async (req, res) => {
             { expiresIn: '5m' }
         );
 
-        let pending = getPending();
-        pending = pending.filter(p => p.email !== email);
-        pending.push({ email, otpToken: resetToken, type: 'reset', createdAt: Date.now() });
-        savePending(pending);
+        await Pending.findOneAndDelete({ email, type: 'reset' });
+        await Pending.create({ email, otpToken: resetToken, type: 'reset' });
 
         try {
             await sendOtpEmail(email, otp);
@@ -201,9 +153,8 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
     try {
         const { email, otp, newPassword } = req.body;
-        const pending = getPending();
 
-        const pendingReset = pending.find(p => p.email === email && p.type === 'reset');
+        const pendingReset = await Pending.findOne({ email, type: 'reset' });
         if (!pendingReset) {
             return res.status(400).json({ message: "No password reset request found" });
         }
@@ -219,18 +170,9 @@ export const resetPassword = async (req, res) => {
             return res.status(400).json({ message: "Invalid OTP" });
         }
 
-        const users = getUsers();
-        const userIndex = users.findIndex(u => u.email === email);
-        if (userIndex === -1) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
         const hashedPassword = await bcrypt.hash(newPassword, 12);
-        users[userIndex].password = hashedPassword;
-        saveUsers(users);
-
-        const newPending = pending.filter(p => !(p.email === email && p.type === 'reset'));
-        savePending(newPending);
+        await User.findOneAndUpdate({ email }, { password: hashedPassword });
+        await Pending.findOneAndDelete({ email, type: 'reset' });
 
         return res.status(200).json({ message: "Password reset successful" });
 

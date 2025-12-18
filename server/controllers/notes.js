@@ -1,49 +1,23 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import User from '../models/User.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const USERS_FILE = path.join(__dirname, '../data/users.json');
-
-
-const getUsers = () => {
+export const getNotes = async (req, res) => {
     try {
-        if (!fs.existsSync(USERS_FILE)) return [];
-        const data = fs.readFileSync(USERS_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (err) {
-        return [];
-    }
-};
-
-
-const saveUsers = (users) => {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-};
-
-
-export const getNotes = (req, res) => {
-    try {
-        const users = getUsers();
-        const user = users.find(u => u._id === req.user.id);
+        const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: "User not found" });
 
         res.status(200).json({ notes: user.notes || [] });
     } catch (error) {
+        console.error('Get notes error:', error);
         res.status(500).json({ message: "Something went wrong" });
-        console.log(error);
     }
 };
 
-
-export const addNote = (req, res) => {
+export const addNote = async (req, res) => {
     try {
         const { title, content } = req.body;
-        const users = getUsers();
-        const userIndex = users.findIndex(u => u._id === req.user.id);
+        const user = await User.findById(req.user.id);
 
-        if (userIndex === -1) return res.status(404).json({ message: "User not found" });
+        if (!user) return res.status(404).json({ message: "User not found" });
 
         const newNote = {
             id: Date.now().toString(),
@@ -53,62 +27,55 @@ export const addNote = (req, res) => {
             lastUpdate: Date.now()
         };
 
-        users[userIndex].notes.push(newNote);
-        saveUsers(users);
+        user.notes.push(newNote);
+        await user.save();
 
         res.status(201).json({ note: newNote });
     } catch (error) {
+        console.error('Add note error:', error);
         res.status(500).json({ message: "Something went wrong" });
-        console.log(error);
     }
 };
 
-
-export const updateNote = (req, res) => {
+export const updateNote = async (req, res) => {
     try {
         const { id } = req.params;
         const { title, content } = req.body;
-        const users = getUsers();
-        const userIndex = users.findIndex(u => u._id === req.user.id);
+        const user = await User.findById(req.user.id);
 
-        if (userIndex === -1) return res.status(404).json({ message: "User not found" });
+        if (!user) return res.status(404).json({ message: "User not found" });
 
-        const noteIndex = users[userIndex].notes.findIndex(n => n.id === id);
+        const noteIndex = user.notes.findIndex(n => n.id === id);
         if (noteIndex === -1) return res.status(404).json({ message: "Note not found" });
 
-        users[userIndex].notes[noteIndex] = {
-            ...users[userIndex].notes[noteIndex],
-            title: title !== undefined ? title : users[userIndex].notes[noteIndex].title,
-            content: content !== undefined ? content : users[userIndex].notes[noteIndex].content,
-            lastUpdate: Date.now()
-        };
+        user.notes[noteIndex].title = title !== undefined ? title : user.notes[noteIndex].title;
+        user.notes[noteIndex].content = content !== undefined ? content : user.notes[noteIndex].content;
+        user.notes[noteIndex].lastUpdate = Date.now();
 
-        saveUsers(users);
-        res.status(200).json({ note: users[userIndex].notes[noteIndex] });
+        await user.save();
+        res.status(200).json({ note: user.notes[noteIndex] });
     } catch (error) {
+        console.error('Update note error:', error);
         res.status(500).json({ message: "Something went wrong" });
-        console.log(error);
     }
 };
 
-
-export const deleteNote = (req, res) => {
+export const deleteNote = async (req, res) => {
     try {
         const { id } = req.params;
-        const users = getUsers();
-        const userIndex = users.findIndex(u => u._id === req.user.id);
+        const user = await User.findById(req.user.id);
 
-        if (userIndex === -1) return res.status(404).json({ message: "User not found" });
+        if (!user) return res.status(404).json({ message: "User not found" });
 
-        const noteIndex = users[userIndex].notes.findIndex(n => n.id === id);
+        const noteIndex = user.notes.findIndex(n => n.id === id);
         if (noteIndex === -1) return res.status(404).json({ message: "Note not found" });
 
-        users[userIndex].notes.splice(noteIndex, 1);
-        saveUsers(users);
+        user.notes.splice(noteIndex, 1);
+        await user.save();
 
         res.status(200).json({ message: "Note deleted successfully" });
     } catch (error) {
+        console.error('Delete note error:', error);
         res.status(500).json({ message: "Something went wrong" });
-        console.log(error);
     }
 };

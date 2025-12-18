@@ -1,18 +1,18 @@
 import React from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { createNote, deleteNote } from '../reducers/noteSlice'
+import { createNoteLocal, deleteNoteLocal } from '../reducers/noteSlice'
 
 const Sidebar = ({ onFileClick }) => {
     const notes = useSelector((state) => state.notes?.items || [])
     const dispatch = useDispatch();
 
     const handleNewFile = () => {
-        dispatch(createNote({ title: 'Untitled', content: '' }));
+        dispatch(createNoteLocal({ title: 'Untitled', content: '' }));
     }
 
     const handleDelete = (e, noteId) => {
         e.stopPropagation();
-        dispatch(deleteNote(noteId));
+        dispatch(deleteNoteLocal(noteId));
     }
 
     return (
