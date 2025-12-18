@@ -1,0 +1,32 @@
+[
+  {
+    "_id": "1766041532074",
+    "email": "kartikay123@gmail.com",
+    "name": "Kartikay Shukla",
+    "password": "$2b$12$sVWymDVZ874MqJYYY35gdePx59zv63qy.ROcBwVuheK9XR0iZU7qm",
+    "notes": [
+      {
+        "id": "1766042902113",
+        "title": "mahavishnu",
+        "content": "ram ji\n",
+        "createdAt": 1766042902113,
+        "lastUpdate": 1766042918476
+      }
+    ]
+  },
+  {
+    "_id": "1766041982211",
+    "email": "hello123@gamil.com",
+    "name": "Kartikay ",
+    "password": "$2b$12$bRca.bTqHrwt2k2s49.wNOGIthQ8VHg6PEHEfvmHByp2v1XPQEzRe",
+    "notes": [
+      {
+        "id": "1766042936046",
+        "title": "mahadev",
+        "content": "omkareshwar",
+        "createdAt": 1766042936046,
+        "lastUpdate": 1766042948209
+      }
+    ]
+  }
+]
