@@ -14,32 +14,34 @@ import {
 import storage from 'redux-persist/lib/storage'
 
 const migrate = (state) => {
-  return Promise.resolve(
-    state && Array.isArray(state.notes)
-      ? {
-        ...state,
-        notes: {
-          items: [],
-          pendingSync: [],
-          loading: false,
-          error: null
-        }
+  // Only migrate if state exists and needs migration
+  if (!state || !state.notes) {
+    return Promise.resolve({
+      ...state,
+      notes: {
+        folders: [],
+        pendingSync: [],
+        loading: false,
+        error: null
       }
-      : state && state.notes && !state.notes.pendingSync
-        ? {
-          ...state,
-          notes: {
-            ...state.notes,
-            pendingSync: []
-          }
-        }
-        : state
-  );
+    });
+  }
+
+  // Preserve existing data, just ensure structure is correct
+  return Promise.resolve({
+    ...state,
+    notes: {
+      folders: state.notes.folders || [],
+      pendingSync: state.notes.pendingSync || [],
+      loading: false,
+      error: null
+    }
+  });
 };
 
 const persistConfig = {
   key: 'root',
-  version: 3,
+  version: 5,
   storage,
   migrate,
 }

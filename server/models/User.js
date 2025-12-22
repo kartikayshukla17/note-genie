@@ -1,26 +1,14 @@
 import mongoose from 'mongoose';
 
-const noteSchema = new mongoose.Schema({
-    id: {
-        type: String,
-        required: true
-    },
-    title: {
-        type: String,
-        default: 'Untitled'
-    },
-    content: {
-        type: String,
-        default: ''
-    },
-    createdAt: {
-        type: Number,
-        default: () => Date.now()
-    },
-    lastUpdate: {
-        type: Number,
-        default: () => Date.now()
-    }
+const itemSchema = new mongoose.Schema({
+    id: { type: String, required: true },
+    type: { type: String, enum: ['folder', 'note'], required: true },
+    name: { type: String, default: 'New Folder' },
+    title: { type: String, default: 'Untitled' },
+    content: { type: String, default: '' },
+    children: { type: [], default: [] },
+    createdAt: { type: Number, default: () => Date.now() },
+    lastUpdate: { type: Number, default: () => Date.now() }
 });
 
 const userSchema = new mongoose.Schema({
@@ -37,8 +25,8 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    notes: {
-        type: [noteSchema],
+    folders: {
+        type: [itemSchema],
         default: []
     }
 }, { timestamps: true });

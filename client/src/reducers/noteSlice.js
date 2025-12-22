@@ -1,69 +1,114 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5001/notes';
+const API_URL = 'http://localhost:5001';
 
-export const fetchNotes = createAsyncThunk('notes/fetchNotes', async () => {
-    const res = await axios.get(API_URL, { withCredentials: true });
-    return res.data.notes;
+// Recursive helper to find item in tree
+const findItemInTree = (items, itemId) => {
+    for (const item of items) {
+        if (item.id === itemId) return item;
+        if (item.children && item.children.length > 0) {
+            const found = findItemInTree(item.children, itemId);
+            if (found) return found;
+        }
+    }
+    return null;
+};
+
+// Recursive helper to delete item from tree
+const deleteItemFromTree = (items, itemId) => {
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].id === itemId) {
+            items.splice(i, 1);
+            return true;
+        }
+        if (items[i].children && items[i].children.length > 0) {
+            if (deleteItemFromTree(items[i].children, itemId)) {
+                return true;
+            }
+        }
+    }
+    return false;
+};
+
+export const fetchFolders = createAsyncThunk('notes/fetchFolders', async () => {
+    const res = await axios.get(`${API_URL}/folders`, { withCredentials: true });
+    return res.data.folders;
 });
 
-export const syncNoteToServer = createAsyncThunk('notes/syncNote', async ({ id, title, content, isNew }) => {
+export const syncItemToServer = createAsyncThunk('notes/syncItem', async ({ id, type, name, title, content, parentId, isNew }) => {
     if (isNew) {
-        const res = await axios.post(API_URL, { title, content }, { withCredentials: true });
-        return { oldId: id, newNote: res.data.note };
+        const res = await axios.post(`${API_URL}/folders`, { type, name, title, content, parentId }, { withCredentials: true });
+        return { oldId: id, newItem: res.data.item };
     } else {
-        const res = await axios.put(`${API_URL}/${id}`, { title, content }, { withCredentials: true });
-        return { oldId: id, newNote: res.data.note };
+        const res = await axios.put(`${API_URL}/folders/${id}`, { name, title, content }, { withCredentials: true });
+        return { oldId: id, newItem: res.data.item };
     }
 });
 
-export const deleteNoteAsync = createAsyncThunk('notes/deleteNote', async (id) => {
-    await axios.delete(`${API_URL}/${id}`, { withCredentials: true });
+export const deleteItemAsync = createAsyncThunk('notes/deleteItem', async (id) => {
+    await axios.delete(`${API_URL}/folders/${id}`, { withCredentials: true });
     return id;
 });
 
 const noteSlice = createSlice({
     name: "notes",
     initialState: {
-        items: [],
+        folders: [],
         pendingSync: [],
         loading: false,
         error: null
     },
     reducers: {
         clearNotes: (state) => {
-            state.items = [];
+            state.folders = [];
             state.pendingSync = [];
         },
 
-        createNoteLocal: (state, action) => {
-            const newNote = {
-                id: `local_${Date.now()}`,
-                title: action.payload?.title || 'Untitled',
-                content: action.payload?.content || '',
+        createItemLocal: (state, action) => {
+            const { type, name, title, content, parentId, id } = action.payload;
+            const newItem = {
+                id: id || `local_${type}_${Date.now()}`,
+                type,
+                name: type === 'folder' ? (name || 'New Folder') : undefined,
+                title: type === 'note' ? (title || 'Untitled') : undefined,
+                content: type === 'note' ? (content || '') : undefined,
+                children: type === 'folder' ? [] : undefined,
                 createdAt: Date.now(),
                 lastUpdate: Date.now(),
                 isLocal: true
             };
-            state.items.push(newNote);
-            state.pendingSync.push(newNote.id);
+
+            if (parentId) {
+                const parent = findItemInTree(state.folders, parentId);
+                if (parent && parent.type === 'folder') {
+                    parent.children.push(newItem);
+                }
+            } else {
+                state.folders.push(newItem);
+            }
+            state.pendingSync.push(newItem.id);
         },
 
-        updateNoteLocal: (state, action) => {
-            const note = state.items.find((n) => n.id === action.payload.id);
-            if (note) {
-                note.title = action.payload.title;
-                note.content = action.payload.content;
-                note.lastUpdate = Date.now();
-                if (!state.pendingSync.includes(note.id)) {
-                    state.pendingSync.push(note.id);
+        updateItemLocal: (state, action) => {
+            const { id, name, title, content } = action.payload;
+            const item = findItemInTree(state.folders, id);
+            if (item) {
+                if (item.type === 'folder' && name !== undefined) {
+                    item.name = name;
+                } else if (item.type === 'note') {
+                    if (title !== undefined) item.title = title;
+                    if (content !== undefined) item.content = content;
+                    item.lastUpdate = Date.now();
+                }
+                if (!state.pendingSync.includes(id)) {
+                    state.pendingSync.push(id);
                 }
             }
         },
 
-        deleteNoteLocal: (state, action) => {
-            state.items = state.items.filter((note) => note.id !== action.payload);
+        deleteItemLocal: (state, action) => {
+            deleteItemFromTree(state.folders, action.payload);
             state.pendingSync = state.pendingSync.filter((id) => id !== action.payload);
         },
 
@@ -73,34 +118,39 @@ const noteSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
-            .addCase(fetchNotes.pending, (state) => {
+            .addCase(fetchFolders.pending, (state) => {
                 state.loading = true;
             })
-            .addCase(fetchNotes.fulfilled, (state, action) => {
+            .addCase(fetchFolders.fulfilled, (state, action) => {
                 state.loading = false;
-                const serverNotes = action.payload || [];
-                const localOnlyNotes = state.items.filter(n => n.isLocal);
-                state.items = [...serverNotes, ...localOnlyNotes];
+                const serverFolders = action.payload || [];
+                const localOnlyItems = state.folders.filter(f => f.isLocal);
+                state.folders = [...serverFolders, ...localOnlyItems];
             })
-            .addCase(fetchNotes.rejected, (state, action) => {
+            .addCase(fetchFolders.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error.message;
-                // Keep existing items when fetch fails (offline mode)
             })
-            .addCase(syncNoteToServer.fulfilled, (state, action) => {
-                const { oldId, newNote } = action.payload;
-                const index = state.items.findIndex(n => n.id === oldId);
-                if (index !== -1) {
-                    state.items[index] = { ...newNote, isLocal: false };
+            .addCase(syncItemToServer.fulfilled, (state, action) => {
+                const { oldId, newItem } = action.payload;
+                const item = findItemInTree(state.folders, oldId);
+                if (item) {
+                    Object.assign(item, { ...newItem, isLocal: false });
                 }
                 state.pendingSync = state.pendingSync.filter(id => id !== oldId);
             })
-            .addCase(deleteNoteAsync.fulfilled, (state, action) => {
-                state.items = state.items.filter((note) => note.id !== action.payload);
+            .addCase(deleteItemAsync.fulfilled, (state, action) => {
+                deleteItemFromTree(state.folders, action.payload);
             });
     }
 });
 
-export const { clearNotes, createNoteLocal, updateNoteLocal, deleteNoteLocal, markSynced } = noteSlice.actions;
+export const {
+    clearNotes,
+    createItemLocal,
+    updateItemLocal,
+    deleteItemLocal,
+    markSynced
+} = noteSlice.actions;
 
 export default noteSlice.reducer;

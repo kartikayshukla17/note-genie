@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import authRoutes from './routes/auth.js';
 import notesRoutes from './routes/notes.js';
+import foldersRoutes from './routes/folders.js';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use(express.json());
 
 app.use('/auth', authRoutes);
 app.use('/notes', notesRoutes);
+app.use('/folders', foldersRoutes);
 
 app.get('/', (req, res) => {
     res.send('Note Genie API is running');
