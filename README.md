@@ -2,6 +2,11 @@
 
 A modern, full-stack note-taking application with secure email-based authentication.
 
+> [!NOTE]
+> **For Recruiters & Testers:** 
+> Since this application is deployed on a free-tier hosting service (Render), SMTP email traffic is often restricted or rate-limited, which may prevent OTP emails from arriving. 
+> To ensure a smooth testing experience, this app includes a **Demo Mode**: if email sending fails or is delayed, the **OTP Code will be displayed directly on the verification screen**. Please use that code to proceed.
+
 ## Features
 
 - ✨ **Email OTP Authentication** - Secure registration with email verification
