@@ -1,6 +1,10 @@
 import nodemailer from 'nodemailer';
 
 export const sendOtpEmail = async (email, otp) => {
+    // Debug credentials (masked)
+    console.log(`[Email Config] User: ${process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 3) + '***' : 'MISSING'}`);
+    console.log(`[Email Config] Pass Length: ${process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : '0'}`);
+
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 587,
@@ -10,6 +14,14 @@ export const sendOtpEmail = async (email, otp) => {
             pass: process.env.EMAIL_PASS
         }
     });
+
+    try {
+        await transporter.verify();
+        console.log('[Email] Connection to Gmail verified successfully');
+    } catch (error) {
+        console.error('[Email] Connection verification FAILED:', error);
+        throw error; // Initial connection failed
+    }
 
     const mailOptions = {
         from: process.env.EMAIL_USER,
