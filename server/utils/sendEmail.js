@@ -6,7 +6,7 @@ export const sendOtpEmail = async (email, otp) => {
     console.log(`[Email Config] Pass Length: ${process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : '0'}`);
 
     const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
+        host: 'smtp-relay.brevo.com',
         port: 587,
         secure: false, // Use STARTTLS
         auth: {
@@ -48,4 +48,3 @@ export const sendOtpEmail = async (email, otp) => {
         throw error; // Re-throw to be handled by controller
     }
 };
-
