@@ -1,0 +1,35 @@
+services:
+  # The Backend Service
+  - type: web
+    name: note-genie-api
+    root: server
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CLIENT_URL
+        sync: false # Set this to your frontend URL after deployment (e.g., https://note-genie-client.onrender.com)
+      - key: PORT
+        value: 10000
+
+  # The Frontend Service
+  - type: static
+    name: note-genie-client
+    root: client
+    env: static
+    buildCommand: npm install && npm run build
+    publishDir: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: note-genie-api
+          property: url

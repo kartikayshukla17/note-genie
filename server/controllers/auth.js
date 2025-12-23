@@ -77,6 +77,8 @@ export const verifyOtp = async (req, res) => {
 
         res.cookie("access_token", token, {
             httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
         }).status(201).json({
             message: "Email verified!",
             user: { id: newUser._id, email: newUser.email, name: newUser.name, notes: newUser.notes }
@@ -106,6 +108,8 @@ export const login = async (req, res) => {
 
         res.cookie("access_token", token, {
             httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
         }).status(200).json({
             message: "Login successful",
             user: { id: existingUser._id, email: existingUser.email, name: existingUser.name, notes: existingUser.notes }

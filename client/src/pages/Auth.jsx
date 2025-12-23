@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useDispatch } from 'react-redux';
 import { loginStart, loginSuccess, loginFailure } from '../reducers/userSlice';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
 const EyeIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
@@ -110,13 +112,13 @@ const Auth = () => {
         try {
             if (mode === 'login') {
                 dispatch(loginStart());
-                const res = await axios.post('http://localhost:5001/auth/login',
+                const res = await axios.post(`${API_URL}/auth/login`,
                     { email, password },
                     { withCredentials: true }
                 );
                 dispatch(loginSuccess(res.data.user));
             } else if (mode === 'register') {
-                await axios.post('http://localhost:5001/auth/register',
+                await axios.post(`${API_URL}/auth/register`,
                     { email, password, name },
                     { withCredentials: true }
                 );
@@ -137,7 +139,7 @@ const Auth = () => {
 
         try {
             dispatch(loginStart());
-            const res = await axios.post('http://localhost:5001/auth/verify-otp',
+            const res = await axios.post(`${API_URL}/auth/verify-otp`,
                 { email, otp },
                 { withCredentials: true }
             );
@@ -162,7 +164,7 @@ const Auth = () => {
         setLoading(true);
 
         try {
-            await axios.post('http://localhost:5001/auth/forgot-password',
+            await axios.post(`${API_URL}/auth/forgot-password`,
                 { email },
                 { withCredentials: true }
             );
@@ -191,7 +193,7 @@ const Auth = () => {
         setLoading(true);
 
         try {
-            await axios.post('http://localhost:5001/auth/reset-password',
+            await axios.post(`${API_URL}/auth/reset-password`,
                 { email, otp, newPassword },
                 { withCredentials: true }
             );
