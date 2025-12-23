@@ -305,9 +305,10 @@ const Auth = () => {
     return (
         <div className="h-screen w-screen bg-zinc-950 flex items-center justify-center text-zinc-300 font-sans">
             <div className="bg-zinc-900/50 p-8 rounded-xl shadow-2xl border border-white/5 ring-1 ring-black/20 backdrop-blur-sm w-96">
-                <h1 className="text-2xl font-bold mb-6 text-center text-white">
-                    {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                <h1 className="text-2xl font-bold mb-2 text-center text-white">
+                    {mode === 'login' ? 'Welcome Back to Note Genie' : 'Sign Up to Note Genie'}
                 </h1>
+                <p className="text-zinc-500 text-center text-sm mb-6">Start creating notes, managing tasks, and more.</p>
                 {error && <p className="text-red-400 text-sm text-center mb-4">{error}</p>}
                 {successMessage && <p className="text-green-400 text-sm text-center mb-4">{successMessage}</p>}
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4" autoComplete="off">
