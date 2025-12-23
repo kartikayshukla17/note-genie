@@ -26,6 +26,14 @@ export const sendOtpEmail = async (email, otp) => {
         `
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+        console.log(`[Email] Attempting to send OTP to ${email}`);
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[Email] Success! Message ID: ${info.messageId}`);
+    } catch (error) {
+        console.error(`[Email] FAILED to send to ${email}. Error: ${error.message}`);
+        console.error(`[Email] Stack: ${error.stack}`);
+        throw error; // Re-throw to be handled by controller
+    }
 };
 
