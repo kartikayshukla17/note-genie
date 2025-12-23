@@ -5,13 +5,16 @@ export const sendOtpEmail = async (email, otp) => {
     console.log(`[Email Config] User: ${process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 3) + '***' : 'MISSING'}`);
     console.log(`[Email Config] Pass Length: ${process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : '0'}`);
 
+    // Clean password (remove spaces often passed in App Passwords)
+    const cleanPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : '';
+
     const transporter = nodemailer.createTransport({
-        host: 'smtp-relay.brevo.com',
+        host: process.env.EMAIL_HOST || 'smtp.gmail.com', // Default to Gmail if not specified
         port: 587,
         secure: false, // Use STARTTLS
         auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
+            pass: cleanPass
         }
     });
 
@@ -24,7 +27,7 @@ export const sendOtpEmail = async (email, otp) => {
     }
 
     const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
         to: email,
         subject: 'Note Genie - Verify Your Email',
         html: `

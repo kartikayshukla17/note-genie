@@ -29,13 +29,14 @@ export const register = async (req, res) => {
         await Pending.findOneAndDelete({ email });
         await Pending.create({ email, otpToken, type: 'register' });
 
-        try {
-            await sendOtpEmail(email, otp);
-            return res.status(200).json({ message: "OTP sent to email", email });
-        } catch (emailError) {
+        // Fire-and-forget email (don't await) - fast UI response
+        sendOtpEmail(email, otp).catch(emailError => {
             console.error('Email send error:', emailError);
-            return res.status(500).json({ message: "Failed to send OTP email. Please try again." });
-        }
+            console.log(`[DEV MODE] OTP for ${email}: ${otp}`); // Console Fallback
+        });
+
+        // Return OTP in response for UI Demo Mode (Recruiter ease)
+        return res.status(200).json({ message: "OTP sent to email", email, demoOtp: otp });
 
     } catch (error) {
         console.error('Register error:', error);
@@ -140,13 +141,14 @@ export const forgotPassword = async (req, res) => {
         await Pending.findOneAndDelete({ email, type: 'reset' });
         await Pending.create({ email, otpToken: resetToken, type: 'reset' });
 
-        try {
-            await sendOtpEmail(email, otp);
-            return res.status(200).json({ message: "Reset OTP sent to email", email });
-        } catch (emailError) {
+        // Fire-and-forget email (don't await)
+        sendOtpEmail(email, otp).catch(emailError => {
             console.error('Email send error:', emailError);
-            return res.status(500).json({ message: "Failed to send reset email. Please try again." });
-        }
+            console.log(`[DEV MODE] OTP for ${email}: ${otp}`); // Console Fallback
+        });
+
+        // Return OTP in response for UI Demo Mode
+        return res.status(200).json({ message: "Reset OTP sent to email", email, demoOtp: otp });
 
     } catch (error) {
         console.error('Forgot password error:', error);
